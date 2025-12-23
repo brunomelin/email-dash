@@ -11,10 +11,10 @@ export function normalizeCampaign(
 ): Omit<Campaign, 'createdAt' | 'updatedAt'> {
   // Detectar se é automação
   const rawPayload = acCampaign as unknown as Record<string, unknown>
-  const isAutomation = 
+  const isAutomation: boolean = 
     rawPayload.automation === '1' || 
     rawPayload.automation === 1 ||
-    (rawPayload.seriesid && rawPayload.seriesid !== '0')
+    Boolean(rawPayload.seriesid && rawPayload.seriesid !== '0')
 
   // Mapear status numérico para string
   const statusMap: Record<number, string> = {
@@ -73,7 +73,7 @@ export function normalizeCampaign(
     clickToOpenRate,
     bounces,
     unsubscribes,
-    rawPayload: acCampaign as unknown as Record<string, unknown>,
+    rawPayload: acCampaign as any,
   }
 }
 
@@ -91,7 +91,7 @@ export function normalizeList(
     name: acList.name,
     activeContacts,
     totalContacts: activeContacts, // AC não diferencia por padrão
-    rawPayload: acList as unknown as Record<string, unknown>,
+    rawPayload: acList as any,
   }
 }
 
@@ -114,7 +114,7 @@ export function normalizeAutomation(
     entered,
     completed: exited, // aproximação: exited = completed
     active,
-    rawPayload: acAutomation as unknown as Record<string, unknown>,
+    rawPayload: acAutomation as any,
   }
 }
 
@@ -153,7 +153,7 @@ export function normalizeMessage(
     wasClicked,
     wasBounced,
     contactId: acMessage.contactid || null,
-    rawPayload: acMessage as unknown as Record<string, unknown>,
+    rawPayload: acMessage as any,
   }
 }
 

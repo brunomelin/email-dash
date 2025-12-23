@@ -104,7 +104,7 @@ export class MetricsService {
 
     const aggregated = calculateAggregatedMetrics(campaigns, metricKeys)
 
-    return aggregated as AggregatedMetrics
+    return aggregated as unknown as AggregatedMetrics
   }
 
   /**

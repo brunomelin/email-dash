@@ -174,7 +174,7 @@ export async function updateAccountAction(
 /**
  * Deleta conta (soft delete - marca como inativa, ou hard delete)
  */
-export async function deleteAccountAction(id: string): Promise<ActionResult> {
+export async function deleteAccountAction(id: string): Promise<ActionResult<{ softDelete: boolean }>> {
   try {
     // Verificar se conta existe
     const account = await prisma.account.findUnique({

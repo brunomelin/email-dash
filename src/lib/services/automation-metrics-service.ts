@@ -8,8 +8,6 @@ export interface AutomationMetrics {
   name: string
   status: string
   entered: number
-  exited: number
-  retentionRate: number
   totalCampaigns: number
   totalSent: number
   totalOpens: number
@@ -26,8 +24,6 @@ export interface AutomationStats {
   totalAutomations: number
   activeAutomations: number
   totalEntered: number
-  totalExited: number
-  avgRetentionRate: number
   automationsWithEmails: number
 }
 
@@ -90,19 +86,19 @@ export class AutomationMetricsService {
         patterns.push({ 
           name: { 
             startsWith: prefix, 
-            mode: 'insensitive' 
+            mode: 'insensitive' as const
           } 
         })
       } else {
         // SEM prefixo entre colchetes: usar lógica antiga
         // Padrão 1: Nome completo
-        patterns.push({ name: { contains: autoName, mode: 'insensitive' } })
+        patterns.push({ name: { contains: autoName, mode: 'insensitive' as const } })
         
         // Padrão 2: Código numérico no início (ex: "00 - Boas Vindas")
         const codeMatch = autoName.match(/^(\d+)/)
         if (codeMatch) {
           const code = codeMatch[1]
-          patterns.push({ name: { contains: `email ${code}`, mode: 'insensitive' } })
+          patterns.push({ name: { contains: `email ${code}`, mode: 'insensitive' as const } })
         }
       }
 
@@ -147,10 +143,6 @@ export class AutomationMetricsService {
       const clickToOpenRate = totalOpens > 0 ? totalClicks / totalOpens : 0
 
       const entered = automation.entered || 0
-      const exited = automation.exited || 0
-      const retentionRate = entered > 0 
-        ? (entered - exited) / entered 
-        : 0
 
       // Badge de performance (baseado em open rate)
       let performanceBadge: 'excellent' | 'good' | 'average' | 'low' | 'none' = 'none'
@@ -168,8 +160,6 @@ export class AutomationMetricsService {
         name: automation.name,
         status: automation.status,
         entered,
-        exited,
-        retentionRate,
         totalCampaigns: filteredCampaigns.length,
         totalSent,
         totalOpens,
@@ -196,18 +186,12 @@ export class AutomationMetricsService {
     const totalAutomations = automations.length
     const activeAutomations = automations.filter(a => a.status === '1').length
     const totalEntered = automations.reduce((sum, a) => sum + a.entered, 0)
-    const totalExited = automations.reduce((sum, a) => sum + a.exited, 0)
-    const avgRetentionRate = totalAutomations > 0
-      ? automations.reduce((sum, a) => sum + a.retentionRate, 0) / totalAutomations
-      : 0
     const automationsWithEmails = automations.filter(a => a.totalCampaigns > 0).length
 
     return {
       totalAutomations,
       activeAutomations,
       totalEntered,
-      totalExited,
-      avgRetentionRate,
       automationsWithEmails,
     }
   }
@@ -278,7 +262,7 @@ export class AutomationMetricsService {
    * Busca top automações por métrica
    */
   async getTopAutomations(
-    metric: 'openRate' | 'clickRate' | 'retentionRate' | 'entered',
+    metric: 'openRate' | 'clickRate' | 'entered',
     limit: number = 5,
     filters: AutomationFilters = {}
   ) {

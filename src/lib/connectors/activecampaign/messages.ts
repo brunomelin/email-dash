@@ -53,7 +53,7 @@ export class MessagesAPI {
    * Obtém uma mensagem específica
    */
   async getMessage(messageId: string): Promise<ACMessage> {
-    const response = await this.client.get<{ message: ACMessage }>(`/messages/${messageId}`)
+    const response = await this.client.get(`/messages/${messageId}`) as { message: ACMessage }
     return response.message
   }
 

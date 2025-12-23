@@ -69,10 +69,7 @@ export default async function AutomationsPage({ searchParams }: AutomationsPageP
     .sort((a, b) => b.openRate - a.openRate)
     .slice(0, 5)
 
-  const topByRetention = automations
-    .filter(a => a.entered > 0)
-    .sort((a, b) => b.retentionRate - a.retentionRate)
-    .slice(0, 5)
+  // Removido: topByRetention (campo retentionRate foi removido do schema)
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -221,45 +218,7 @@ export default async function AutomationsPage({ searchParams }: AutomationsPageP
               </CardContent>
             </Card>
 
-            {/* Top 5 - Retenção */}
-            <Card>
-              <CardHeader>
-                <CardTitle>⭐ Top 5 - Retenção</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {topByRetention.length === 0 ? (
-                  <p className="text-sm text-muted-foreground">
-                    Nenhuma automação com contatos ainda
-                  </p>
-                ) : (
-                  <div className="space-y-4">
-                    {topByRetention.map((automation, index) => (
-                      <div
-                        key={`${automation.accountId}-${automation.id}`}
-                        className="flex items-center justify-between border-b pb-2 last:border-0"
-                      >
-                        <div className="flex items-center gap-3">
-                          <span className="text-2xl font-bold text-muted-foreground">
-                            #{index + 1}
-                          </span>
-                          <div>
-                            <div className="font-medium">{automation.name}</div>
-                            <p className="text-xs text-muted-foreground">
-                              {automation.accountName} • {automation.entered.toLocaleString('pt-BR')} entraram
-                            </p>
-                          </div>
-                        </div>
-                        <div className="text-right">
-                          <span className="text-lg font-semibold text-blue-600">
-                            {(automation.retentionRate * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                )}
-              </CardContent>
-            </Card>
+            {/* Removido: Top 5 - Retenção (campo retentionRate não existe mais) */}
           </div>
         )}
       </main>

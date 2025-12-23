@@ -40,9 +40,6 @@ export class ListMetricsService {
       where: {
         ...(filters.accountId && { accountId: filters.accountId }),
       },
-      orderBy: {
-        name: 'asc',
-      },
       include: {
         account: {
           select: {

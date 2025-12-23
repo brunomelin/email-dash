@@ -1,8 +1,8 @@
 // Types for ActiveCampaign API v3 responses
 
 export interface ACApiResponse<T> {
-  [key: string]: T | ACMeta
   meta?: ACMeta
+  [key: string]: T | ACMeta | undefined
 }
 
 export interface ACMeta {

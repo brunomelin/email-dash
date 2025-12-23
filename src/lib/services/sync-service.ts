@@ -77,8 +77,8 @@ export class SyncService {
                 id: acList.id,
               },
             },
-            create: normalized,
-            update: normalized,
+            create: normalized as any,
+            update: normalized as any,
           })
 
           listsSynced++
@@ -100,8 +100,8 @@ export class SyncService {
                 id: acCampaign.id,
               },
             },
-            create: normalized,
-            update: normalized,
+            create: normalized as any,
+            update: normalized as any,
           })
 
           // Buscar listas da campanha via API (endpoint separado)
@@ -157,8 +157,8 @@ export class SyncService {
                 id: acAutomation.id,
               },
             },
-            create: normalized,
-            update: normalized,
+            create: normalized as any,
+            update: normalized as any,
           })
 
           automationsSynced++
@@ -199,8 +199,8 @@ export class SyncService {
                 id: acMessage.id,
               },
             },
-            create: normalized,
-            update: normalized,
+            create: normalized as any,
+            update: normalized as any,
           })
 
           messagesSynced++
