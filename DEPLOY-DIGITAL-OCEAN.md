@@ -1,5 +1,7 @@
 # 🚀 Deploy no Digital Ocean - Guia Completo
 
+> ⚠️ **ATENÇÃO IMPORTANTE**: A partir da seção "Parte 2" (após conectar via SSH), todos os comandos devem ser executados **DENTRO DO SERVIDOR** (droplet Digital Ocean), não no seu computador local! Você vai se conectar via SSH e executar tudo lá dentro.
+
 ## 📋 Pré-requisitos
 
 - ✅ Conta na Digital Ocean
@@ -84,15 +86,19 @@ cat ~/.ssh/id_ed25519.pub
 
 ## 🔐 Parte 2: Configuração Inicial do Servidor
 
+> ⚠️ **A PARTIR DAQUI, você estará executando comandos NO SERVIDOR, não no seu computador!**
+
 ### 2.1. Conectar ao Servidor
 
 ```bash
-# Substituir pelo seu IP
+# Do seu computador local, conectar ao servidor
 ssh root@164.90.123.45
 
 # Se usar password, digite quando solicitado
 # Se usar SSH key, conecta automaticamente
 ```
+
+> ✅ Você está agora **dentro do servidor**. Todos os próximos comandos serão executados aqui.
 
 ### 2.2. Atualizar Sistema
 
@@ -132,12 +138,14 @@ ufw status
 ### 2.5. Desconectar e Reconectar como Deploy
 
 ```bash
-# Sair do root
+# Sair do root (volta pro seu computador local)
 exit
 
-# Conectar como deploy
+# Do seu computador, conectar novamente ao servidor como deploy
 ssh deploy@164.90.123.45
 ```
+
+> ✅ Você está novamente **dentro do servidor**, agora como usuário `deploy`. Todos os próximos comandos continuam sendo no servidor.
 
 ---
 
@@ -216,71 +224,79 @@ psql -h localhost -U email_dash_user -d email_dash
 
 ## 🚀 Parte 4: Deploy do Projeto Next.js
 
-### 4.1. Clonar o Repositório
+> **📦 Projeto no GitHub**: https://github.com/brunomelin/email-dash
 
-**Opção A: Se o projeto está no GitHub/GitLab**
+### 4.1. Clonar o Repositório do GitHub
 
 ```bash
 # Criar diretório
 mkdir -p ~/apps
 cd ~/apps
 
-# Clonar repositório (substituir pela sua URL)
-git clone https://github.com/seu-usuario/email-dash.git
+# Clonar repositório
+git clone https://github.com/brunomelin/email-dash.git
 cd email-dash
+
+# Verificar branch
+git branch
+
+# Deve estar em 'main' ou 'master'
 ```
 
-**Opção B: Se o projeto está local (upload via SCP)**
+**✅ Projeto clonado do GitHub!**
 
-No seu Mac:
-```bash
-# Comprimir projeto
-cd /Users/brunomelin
-tar -czf email-dash.tar.gz email-dash/
-
-# Excluir node_modules antes
-cd email-dash
-rm -rf node_modules .next
-
-# Comprimir novamente
-cd ..
-tar -czf email-dash.tar.gz email-dash/
-
-# Enviar para o servidor
-scp email-dash.tar.gz deploy@164.90.123.45:~/
-
-# No servidor:
-ssh deploy@164.90.123.45
-mkdir -p ~/apps
-cd ~/apps
-tar -xzf ~/email-dash.tar.gz
-cd email-dash
-```
+> **Nota**: Se o repositório for privado, configure acesso SSH:
+> 
+> ```bash
+> # No servidor, gerar SSH key
+> ssh-keygen -t ed25519 -C "servidor@email-dashboard"
+> 
+> # Mostrar chave pública
+> cat ~/.ssh/id_ed25519.pub
+> 
+> # Adicionar no GitHub:
+> # Settings → SSH and GPG keys → New SSH key
+> # Cole a chave pública
+> 
+> # Testar conexão
+> ssh -T git@github.com
+> # Deve retornar: "Hi brunomelin! You've successfully authenticated..."
+> 
+> # Se clonou com HTTPS, mudar para SSH:
+> cd ~/apps/email-dash
+> git remote set-url origin git@github.com:brunomelin/email-dash.git
+> ```
 
 ### 4.2. Configurar Variáveis de Ambiente
 
 ```bash
 cd ~/apps/email-dash
 
-# Criar arquivo .env.production
-nano .env.production
+# Criar arquivo .env (Prisma usa este nome)
+nano .env
 ```
 
 Adicionar (substituir valores):
 
 ```env
 # Database
-DATABASE_URL="postgresql://email_dash_user:SUA_SENHA_AQUI@localhost:5432/email_dash"
+DATABASE_URL="postgresql://email_dash_user:8R$B8)oxBfeP5wD#%u@localhost:5432/email_dash"
 
 # Next.js
 NODE_ENV=production
-NEXT_PUBLIC_APP_URL=https://email.suaempresa.com
+NEXT_PUBLIC_APP_URL=https://crazymail.costaventures.com.br
 
 # Opcional: Analytics, Sentry, etc.
 # NEXT_PUBLIC_GA_ID=...
 ```
 
+> ⚠️ **Substituir**:
+> - `SUA_SENHA_AQUI`: senha do PostgreSQL que você criou na seção 3.3
+> - `email.suaempresa.com`: seu domínio/subdomínio real
+
 Salvar: `Ctrl + X` → `Y` → `Enter`
+
+> ✅ **Segurança**: O arquivo `.env` está no `.gitignore` e não será enviado para o GitHub
 
 ### 4.3. Instalar Dependências
 
@@ -615,9 +631,11 @@ echo "🚀 Iniciando deploy..."
 # Ir para o diretório
 cd ~/apps/email-dash
 
-# Pull do código (se usar Git)
-echo "📥 Baixando código..."
+# Pull do código do GitHub
+echo "📥 Baixando código do GitHub..."
 git pull origin main
+
+# Se houver conflitos, use: git stash && git pull origin main
 
 # Instalar dependências
 echo "📦 Instalando dependências..."
@@ -640,7 +658,9 @@ echo "🔄 Reiniciando aplicação..."
 pm2 restart email-dashboard
 
 echo "✅ Deploy concluído!"
+echo "📊 Status da aplicação:"
 pm2 status
+pm2 logs email-dashboard --lines 20
 ```
 
 Tornar executável:
@@ -651,10 +671,32 @@ chmod +x deploy.sh
 
 ### 10.2. Fazer Deploy de Atualização
 
+Sempre que fizer mudanças no código localmente:
+
+**No seu Mac:**
 ```bash
+# 1. Fazer commit das mudanças
+cd /Users/brunomelin/email-dash
+git add .
+git commit -m "feat: sua descrição das mudanças"
+git push origin main
+```
+
+**No servidor Digital Ocean:**
+```bash
+# 2. Executar script de deploy
 cd ~/apps/email-dash
 ./deploy.sh
 ```
+
+**O script vai**:
+- ✅ Fazer `git pull` do GitHub
+- ✅ Instalar novas dependências
+- ✅ Rodar migrations
+- ✅ Fazer build do Next.js
+- ✅ Reiniciar a aplicação com PM2
+
+⏱️ **Tempo**: ~2-3 minutos por deploy
 
 ---
 
@@ -803,16 +845,20 @@ pm2 restart email-dashboard
 - [ ] Droplet criado e configurado
 - [ ] Node.js 20.x instalado
 - [ ] PostgreSQL 16 instalado e configurado
-- [ ] Projeto clonado e build realizado
+- [ ] **Projeto clonado do GitHub** (https://github.com/brunomelin/email-dash)
+- [ ] SSH key configurada para git pull (se repo privado)
+- [ ] `.env.production` criado com credenciais corretas
+- [ ] Build realizado com sucesso (`npm run build`)
 - [ ] PM2 configurado e rodando
-- [ ] Nginx configurado
-- [ ] DNS configurado (subdomínio aponta para IP)
+- [ ] Nginx configurado como reverse proxy
+- [ ] DNS configurado (subdomínio aponta para IP do droplet)
 - [ ] SSL instalado (Let's Encrypt)
 - [ ] Aplicação acessível via HTTPS
 - [ ] Firewall configurado (UFW)
-- [ ] Fail2Ban instalado (opcional)
+- [ ] Fail2Ban instalado (opcional mas recomendado)
 - [ ] Backups habilitados (Digital Ocean)
-- [ ] Script de deploy criado
+- [ ] Script de deploy criado (`deploy.sh`)
+- [ ] Deploy testado (fazer uma mudança e rodar `./deploy.sh`)
 
 ---
 
@@ -833,8 +879,13 @@ sudo systemctl restart postgresql
 pm2 logs email-dashboard
 sudo tail -f /var/log/nginx/error.log
 
-# Fazer deploy
+# Fazer deploy (após push no GitHub)
 cd ~/apps/email-dash && ./deploy.sh
+
+# Ver branch e último commit
+cd ~/apps/email-dash
+git status
+git log -1
 
 # Ver uso de recursos
 htop

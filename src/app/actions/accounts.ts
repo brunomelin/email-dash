@@ -33,13 +33,13 @@ export async function testConnectionAction(
     // Testar com endpoint /users/me (disponível em todos os planos)
     // Se falhar, tenta /campaigns (mais básico)
     try {
-      const response = await client.get('/users/me')
+      const response = await client.get('/users/me') as any
       
       return {
         success: true,
         data: {
           valid: true,
-          accountName: response.user?.email || 'Conexão válida',
+          accountName: response?.user?.email || 'Conexão válida',
         },
       }
     } catch (userError) {

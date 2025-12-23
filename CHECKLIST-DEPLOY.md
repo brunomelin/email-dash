@@ -114,24 +114,24 @@ Use este checklist para garantir que não esqueceu nada!
 
 ## 🚀 DEPLOY DO PROJETO
 
-- [ ] **Clonar ou upload do código**
-  - [ ] Opção A (Git):
-    ```bash
-    mkdir -p ~/apps && cd ~/apps
-    git clone https://github.com/seu-usuario/email-dash.git
-    cd email-dash
-    ```
-  - [ ] Opção B (Upload):
-    ```bash
-    # No Mac:
-    tar -czf email-dash.tar.gz email-dash/
-    scp email-dash.tar.gz deploy@SEU_IP:~/
-    
-    # No servidor:
-    mkdir -p ~/apps && cd ~/apps
-    tar -xzf ~/email-dash.tar.gz
-    cd email-dash
-    ```
+- [ ] **Clonar do GitHub**
+  ```bash
+  mkdir -p ~/apps && cd ~/apps
+  git clone https://github.com/brunomelin/email-dash.git
+  cd email-dash
+  git branch  # Verificar branch (deve estar em 'main')
+  ```
+
+- [ ] **Configurar SSH do GitHub (se repo privado)**
+  ```bash
+  # Gerar SSH key no servidor
+  ssh-keygen -t ed25519 -C "servidor@email-dashboard"
+  cat ~/.ssh/id_ed25519.pub
+  # Adicionar no GitHub: Settings → SSH and GPG keys
+  
+  # Testar
+  ssh -T git@github.com
+  ```
 
 - [ ] **Criar .env.production**
   ```bash
