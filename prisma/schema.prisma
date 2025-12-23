@@ -1,0 +1,183 @@
+// prisma/schema.prisma
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  name      String
+  baseUrl   String   @map("base_url") // https://ACCOUNT.api-us1.com
+  apiKey    String   @map("api_key")
+  isActive  Boolean  @default(true) @map("is_active")
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  lists       List[]
+  campaigns   Campaign[]
+  automations Automation[]
+  syncJobs    SyncJob[]
+
+  @@map("accounts")
+}
+
+model List {
+  // IDs do ActiveCampaign NÃO são globais, então usamos PK composta
+  id             String   // AC list ID
+  accountId      String   @map("account_id")
+  name           String
+  activeContacts Int?     @map("active_contacts")
+  totalContacts  Int?     @map("total_contacts")
+  rawPayload     Json?    @map("raw_payload")
+  createdAt      DateTime @default(now()) @map("created_at")
+  updatedAt      DateTime @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // many-to-many via join table
+  campaignLinks CampaignList[]
+
+  @@id([accountId, id])
+  @@index([accountId])
+  @@map("lists")
+}
+
+model Campaign {
+  // IDs do ActiveCampaign NÃO são globais, então usamos PK composta
+  id        String    // AC campaign ID
+  accountId String    @map("account_id")
+  name      String
+  status    String    // "sent", "scheduled", "draft", "automation"
+  type      String?   // "single", "recurring", "automation"
+  sendDate  DateTime? @map("send_date")
+
+  // Flag para identificar emails de automação
+  isAutomation Boolean @default(false) @map("is_automation")
+
+  // Métricas (acumuladas - para referência)
+  sent         Int   @default(0)
+  opens        Int   @default(0)
+  uniqueOpens  Int   @default(0) @map("unique_opens")
+  openRate     Float @default(0) @map("open_rate")
+  clicks       Int   @default(0)
+  uniqueClicks Int   @default(0) @map("unique_clicks")
+
+  // Separar CTR vs CTOR
+  clickRate       Float @default(0) @map("click_rate")         // clicks/sent
+  clickToOpenRate Float @default(0) @map("click_to_open_rate") // clicks/opens (CTOR)
+
+  bounces      Int @default(0)
+  unsubscribes Int @default(0)
+
+  rawPayload Json?    @map("raw_payload")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  // many-to-many via join table
+  listLinks CampaignList[]
+
+  // Envios individuais (messages)
+  messages CampaignMessage[]
+
+  @@id([accountId, id])
+  @@index([accountId, sendDate])
+  @@index([sendDate])
+  @@index([accountId, isAutomation])
+  @@map("campaigns")
+}
+
+model CampaignList {
+  // Join table explícita (necessária no Prisma)
+  accountId  String   @map("account_id")
+  campaignId String   @map("campaign_id")
+  listId     String   @map("list_id")
+  createdAt  DateTime @default(now()) @map("created_at")
+
+  campaign Campaign @relation(fields: [accountId, campaignId], references: [accountId, id], onDelete: Cascade)
+  list     List     @relation(fields: [accountId, listId], references: [accountId, id], onDelete: Cascade)
+
+  @@id([accountId, campaignId, listId])
+  @@index([accountId, listId])
+  @@index([accountId, campaignId])
+  @@map("campaign_lists")
+}
+
+model Automation {
+  // IDs do ActiveCampaign NÃO são globais, então usamos PK composta
+  id        String // AC automation ID
+  accountId String @map("account_id")
+  name      String
+  status    String // "active", "inactive"
+
+  // Métricas (melhor esforço)
+  entered   Int @default(0)
+  completed Int @default(0)
+  active    Int @default(0)
+
+  rawPayload Json?    @map("raw_payload")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@id([accountId, id])
+  @@index([accountId])
+  @@map("automations")
+}
+
+model CampaignMessage {
+  // Envio individual de email (para métricas por período)
+  id         String   // AC message ID
+  accountId  String   @map("account_id")
+  campaignId String   @map("campaign_id")
+  
+  // Data real de envio
+  sentAt     DateTime @map("sent_at")
+  
+  // Métricas individuais
+  wasOpened  Boolean  @default(false) @map("was_opened")
+  wasClicked Boolean  @default(false) @map("was_clicked")
+  wasBounced Boolean  @default(false) @map("was_bounced")
+  
+  // Detalhes (opcional)
+  contactId  String?  @map("contact_id")
+  
+  rawPayload Json?    @map("raw_payload")
+  createdAt  DateTime @default(now()) @map("created_at")
+  updatedAt  DateTime @updatedAt @map("updated_at")
+
+  campaign Campaign @relation(fields: [accountId, campaignId], references: [accountId, id], onDelete: Cascade)
+
+  @@id([accountId, id])
+  @@index([accountId, campaignId])
+  @@index([accountId, sentAt])
+  @@index([sentAt])
+  @@map("campaign_messages")
+}
+
+model SyncJob {
+  id         String    @id @default(cuid())
+  accountId  String    @map("account_id")
+  startedAt  DateTime  @default(now()) @map("started_at")
+  finishedAt DateTime? @map("finished_at")
+  status     String    // "running", "completed", "failed"
+  error      String?   @db.Text
+
+  campaignsSynced   Int @default(0) @map("campaigns_synced")
+  listsSynced       Int @default(0) @map("lists_synced")
+  automationsSynced Int @default(0) @map("automations_synced")
+  messagesSynced    Int @default(0) @map("messages_synced")
+
+  account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
+
+  @@index([accountId, startedAt])
+  @@map("sync_jobs")
+}
+
