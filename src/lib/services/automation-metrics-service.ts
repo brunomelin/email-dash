@@ -74,7 +74,8 @@ export class AutomationMetricsService {
       const patterns = []
       
       // Extrair prefixo entre colchetes no início do nome (se houver)
-      const prefixMatch = autoName.match(/^(\[[\w\s]+\])/)
+      // Incluindo hífens para suportar prefixos como [SHEIN-BV]
+      const prefixMatch = autoName.match(/^(\[[\w\s-]+\])/)
       const prefix = prefixMatch ? prefixMatch[1] : null
       
       if (prefix) {

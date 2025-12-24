@@ -517,7 +517,7 @@ No painel do seu provedor de domínio (GoDaddy, Registro.br, Cloudflare, etc.):
 
 ```bash
 # No seu Mac, testar:
-nslookup email.suaempresa.com
+nslookup crazymail.costaventures.com.br/
 
 # Deve retornar o IP do droplet
 ```
