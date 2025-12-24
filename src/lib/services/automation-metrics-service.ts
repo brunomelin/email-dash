@@ -122,8 +122,20 @@ export class AutomationMetricsService {
       if (filters.dateFrom || filters.dateTo) {
         filteredCampaigns = campaigns.filter(campaign => {
           if (!campaign.sendDate) return false
-          if (filters.dateFrom && campaign.sendDate < filters.dateFrom) return false
-          if (filters.dateTo && campaign.sendDate > filters.dateTo) return false
+          
+          // Comparar datas (início do dia para dateFrom, fim do dia para dateTo)
+          if (filters.dateFrom) {
+            const dateFrom = new Date(filters.dateFrom)
+            dateFrom.setHours(0, 0, 0, 0)
+            if (campaign.sendDate < dateFrom) return false
+          }
+          
+          if (filters.dateTo) {
+            const dateTo = new Date(filters.dateTo)
+            dateTo.setHours(23, 59, 59, 999) // Incluir o dia inteiro
+            if (campaign.sendDate > dateTo) return false
+          }
+          
           return true
         })
       }

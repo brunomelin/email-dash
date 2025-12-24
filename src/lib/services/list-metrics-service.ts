@@ -68,8 +68,18 @@ export class ListMetricsService {
           
           const sendDate = new Date(campaign.sendDate)
           
-          if (filters.dateFrom && sendDate < filters.dateFrom) return false
-          if (filters.dateTo && sendDate > filters.dateTo) return false
+          // Comparar datas (início do dia para dateFrom, fim do dia para dateTo)
+          if (filters.dateFrom) {
+            const dateFrom = new Date(filters.dateFrom)
+            dateFrom.setHours(0, 0, 0, 0)
+            if (sendDate < dateFrom) return false
+          }
+          
+          if (filters.dateTo) {
+            const dateTo = new Date(filters.dateTo)
+            dateTo.setHours(23, 59, 59, 999) // Incluir o dia inteiro
+            if (sendDate > dateTo) return false
+          }
           
           return true
         })
@@ -240,8 +250,18 @@ export class ListMetricsService {
         
         const sendDate = new Date(campaign.sendDate)
         
-        if (filters.dateFrom && sendDate < filters.dateFrom) return false
-        if (filters.dateTo && sendDate > filters.dateTo) return false
+        // Comparar datas (início do dia para dateFrom, fim do dia para dateTo)
+        if (filters.dateFrom) {
+          const dateFrom = new Date(filters.dateFrom)
+          dateFrom.setHours(0, 0, 0, 0)
+          if (sendDate < dateFrom) return false
+        }
+        
+        if (filters.dateTo) {
+          const dateTo = new Date(filters.dateTo)
+          dateTo.setHours(23, 59, 59, 999) // Incluir o dia inteiro
+          if (sendDate > dateTo) return false
+        }
         
         return true
       })

@@ -51,10 +51,14 @@ export class MetricsService {
     if (filter.dateFrom || filter.dateTo) {
       where.sendDate = {}
       if (filter.dateFrom) {
-        where.sendDate.gte = filter.dateFrom
+        const dateFrom = new Date(filter.dateFrom)
+        dateFrom.setHours(0, 0, 0, 0) // Início do dia
+        where.sendDate.gte = dateFrom
       }
       if (filter.dateTo) {
-        where.sendDate.lte = filter.dateTo
+        const dateTo = new Date(filter.dateTo)
+        dateTo.setHours(23, 59, 59, 999) // Fim do dia - incluir o dia inteiro
+        where.sendDate.lte = dateTo
       }
     }
 
@@ -191,8 +195,16 @@ export class MetricsService {
 
     if (filter.dateFrom || filter.dateTo) {
       where.sendDate = {}
-      if (filter.dateFrom) where.sendDate.gte = filter.dateFrom
-      if (filter.dateTo) where.sendDate.lte = filter.dateTo
+      if (filter.dateFrom) {
+        const dateFrom = new Date(filter.dateFrom)
+        dateFrom.setHours(0, 0, 0, 0) // Início do dia
+        where.sendDate.gte = dateFrom
+      }
+      if (filter.dateTo) {
+        const dateTo = new Date(filter.dateTo)
+        dateTo.setHours(23, 59, 59, 999) // Fim do dia - incluir o dia inteiro
+        where.sendDate.lte = dateTo
+      }
     }
 
     const campaigns = await prisma.campaign.findMany({
