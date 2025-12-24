@@ -58,18 +58,18 @@ export default async function AutomationsPage({ searchParams }: AutomationsPageP
     filters.accountIds = accounts.map(a => a.id)
   }
 
-  // Buscar métricas
+  // Buscar métricas - NOVA LÓGICA V2
   const service = new AutomationMetricsService()
-  const automations = await service.getAutomationsWithMetrics(filters)
-  const stats = await service.getAutomationsStats(filters)
+  const { withActivity, withoutActivity } = await service.getAutomationsWithMetricsV2(filters)
+  const stats = await service.getAutomationsStatsV2(filters)
 
-  // Top 5 por diferentes métricas
-  const topByOpenRate = automations
+  // Top 5 por diferentes métricas (apenas automações com atividade)
+  const topByOpenRate = withActivity
     .filter(a => a.totalSent > 0)
     .sort((a, b) => b.openRate - a.openRate)
     .slice(0, 5)
-
-  // Removido: topByRetention (campo retentionRate foi removido do schema)
+  
+  const allAutomations = [...withActivity, ...withoutActivity]
 
   return (
     <div className="min-h-screen bg-slate-50">
@@ -115,11 +115,15 @@ export default async function AutomationsPage({ searchParams }: AutomationsPageP
         {/* Estatísticas Gerais */}
         <div>
           <h2 className="text-2xl font-bold mb-4">Visão Geral</h2>
-          <AutomationsStatsCards stats={stats} />
+          <AutomationsStatsCards 
+            stats={stats.total}
+            withActivity={stats.withActivity}
+            withoutActivity={stats.withoutActivity}
+          />
         </div>
 
         {/* Nota sobre Limitações da API */}
-        {automations.length > 0 && (
+        {allAutomations.length > 0 && (
           <Card className="border-blue-200 bg-blue-50">
             <CardHeader>
               <CardTitle className="text-blue-900 text-sm">ℹ️ Sobre as Métricas de Emails</CardTitle>
@@ -151,14 +155,58 @@ export default async function AutomationsPage({ searchParams }: AutomationsPageP
           </Card>
         )}
 
-        {/* Tabela de Todas as Automações */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Todas as Automações ({automations.length})</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {automations.length === 0 ? (
-              <div className="text-center py-12">
+        {/* Seção 1: Automações com Atividade no Período */}
+        {withActivity.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-2xl">🔥</span>
+                Automações com Atividade no Período ({withActivity.length})
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Automações que enviaram emails{' '}
+                {filters.dateFrom && filters.dateTo ? (
+                  <>
+                    entre {new Date(filters.dateFrom).toLocaleDateString('pt-BR')} e{' '}
+                    {new Date(filters.dateTo).toLocaleDateString('pt-BR')}
+                  </>
+                ) : (
+                  'no período filtrado'
+                )}
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AutomationsTable automations={withActivity} />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Seção 2: Outras Automações (sem atividade no período) */}
+        {withoutActivity.length > 0 && (
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <span className="text-2xl">📊</span>
+                Outras Automações ({withoutActivity.length})
+              </CardTitle>
+              <p className="text-sm text-muted-foreground mt-2">
+                Automações sem emails enviados neste período. Mostrando apenas dados de entrada/saída de contatos.
+              </p>
+            </CardHeader>
+            <CardContent>
+              <AutomationsTable 
+                automations={withoutActivity} 
+                hideEmailColumns={true}
+              />
+            </CardContent>
+          </Card>
+        )}
+
+        {/* Mensagem se não há automações */}
+        {allAutomations.length === 0 && (
+          <Card>
+            <CardContent className="py-12">
+              <div className="text-center">
                 <Bot className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
                 <p className="text-muted-foreground mb-4">
                   Nenhuma automação sincronizada ainda.
@@ -169,14 +217,12 @@ export default async function AutomationsPage({ searchParams }: AutomationsPageP
                   </Button>
                 </Link>
               </div>
-            ) : (
-              <AutomationsTable automations={automations} />
-            )}
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
+        )}
 
         {/* Top Rankings */}
-        {automations.length > 0 && (
+        {withActivity.length > 0 && (
           <div className="grid gap-6 md:grid-cols-2">
             {/* Top 5 - Open Rate */}
             <Card>

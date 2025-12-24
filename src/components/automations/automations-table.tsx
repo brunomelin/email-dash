@@ -16,9 +16,10 @@ import { Search, Bot, Mail } from 'lucide-react'
 
 interface AutomationsTableProps {
   automations: AutomationMetrics[]
+  hideEmailColumns?: boolean  // Nova prop para esconder colunas de email
 }
 
-export function AutomationsTable({ automations }: AutomationsTableProps) {
+export function AutomationsTable({ automations, hideEmailColumns = false }: AutomationsTableProps) {
   const [searchTerm, setSearchTerm] = useState('')
 
   const filteredAutomations = automations.filter(automation =>
@@ -69,20 +70,26 @@ export function AutomationsTable({ automations }: AutomationsTableProps) {
               <TableHead>Conta</TableHead>
               <TableHead>Status</TableHead>
               <TableHead className="text-right">Entraram</TableHead>
-              <TableHead className="text-center">
-                <Mail className="h-4 w-4 inline mr-1" />
-                Emails
-              </TableHead>
-              <TableHead className="text-right">Enviados</TableHead>
-              <TableHead className="text-right">Open Rate</TableHead>
-              <TableHead className="text-right">Click Rate</TableHead>
-              <TableHead>Performance</TableHead>
+              
+              {/* Colunas de email - só mostra se não estiver escondido */}
+              {!hideEmailColumns && (
+                <>
+                  <TableHead className="text-center">
+                    <Mail className="h-4 w-4 inline mr-1" />
+                    Emails
+                  </TableHead>
+                  <TableHead className="text-right">Enviados</TableHead>
+                  <TableHead className="text-right">Open Rate</TableHead>
+                  <TableHead className="text-right">Click Rate</TableHead>
+                  <TableHead>Performance</TableHead>
+                </>
+              )}
             </TableRow>
           </TableHeader>
           <TableBody>
             {filteredAutomations.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={9} className="text-center text-muted-foreground py-8">
+                <TableCell colSpan={hideEmailColumns ? 4 : 9} className="text-center text-muted-foreground py-8">
                   {searchTerm
                     ? 'Nenhuma automação encontrada com esse termo'
                     : 'Nenhuma automação sincronizada ainda'}
@@ -96,7 +103,7 @@ export function AutomationsTable({ automations }: AutomationsTableProps) {
                       <Bot className="h-4 w-4 text-muted-foreground" />
                       <div>
                         <div className="font-medium">{automation.name}</div>
-                        {automation.totalCampaigns > 0 && (
+                        {!hideEmailColumns && automation.totalCampaigns > 0 && (
                           <div className="text-xs text-muted-foreground">
                             {automation.totalCampaigns} {automation.totalCampaigns === 1 ? 'email' : 'emails'}
                           </div>
@@ -113,40 +120,46 @@ export function AutomationsTable({ automations }: AutomationsTableProps) {
                   <TableCell className="text-right">
                     {(automation.entered || 0).toLocaleString('pt-BR')}
                   </TableCell>
-                  <TableCell className="text-center">
-                    {automation.totalCampaigns > 0 ? (
-                      <Badge variant="secondary">{automation.totalCampaigns}</Badge>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {automation.totalSent > 0 
-                      ? automation.totalSent.toLocaleString('pt-BR')
-                      : <span className="text-muted-foreground text-xs">—</span>
-                    }
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {automation.totalSent > 0 ? (
-                      <span className={automation.openRate >= 0.3 ? 'text-green-600 font-medium' : ''}>
-                        {(automation.openRate * 100).toFixed(1)}%
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {automation.totalSent > 0 ? (
-                      <span className={automation.clickRate >= 0.05 ? 'text-blue-600 font-medium' : ''}>
-                        {(automation.clickRate * 100).toFixed(1)}%
-                      </span>
-                    ) : (
-                      <span className="text-muted-foreground text-xs">—</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    {getPerformanceBadge(automation.performanceBadge)}
-                  </TableCell>
+                  
+                  {/* Colunas de email - só mostra se não estiver escondido */}
+                  {!hideEmailColumns && (
+                    <>
+                      <TableCell className="text-center">
+                        {automation.totalCampaigns > 0 ? (
+                          <Badge variant="secondary">{automation.totalCampaigns}</Badge>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {automation.totalSent > 0 
+                          ? automation.totalSent.toLocaleString('pt-BR')
+                          : <span className="text-muted-foreground text-xs">—</span>
+                        }
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {automation.totalSent > 0 ? (
+                          <span className={automation.openRate >= 0.3 ? 'text-green-600 font-medium' : ''}>
+                            {(automation.openRate * 100).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {automation.totalSent > 0 ? (
+                          <span className={automation.clickRate >= 0.05 ? 'text-blue-600 font-medium' : ''}>
+                            {(automation.clickRate * 100).toFixed(1)}%
+                          </span>
+                        ) : (
+                          <span className="text-muted-foreground text-xs">—</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        {getPerformanceBadge(automation.performanceBadge)}
+                      </TableCell>
+                    </>
+                  )}
                 </TableRow>
               ))
             )}
