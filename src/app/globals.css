@@ -59,14 +59,19 @@
 }
 
 @layer utilities {
-  /* Sticky Table Header */
-  .table-sticky-header th {
-    @apply sticky top-0 z-10 bg-white border-b shadow-sm;
+  /* Sticky Table Header - Cabeçalho congelado */
+  .table-sticky-header {
+    @apply sticky top-0 z-10 bg-white;
   }
   
-  /* Ensure table container supports sticky positioning */
+  .table-sticky-header th {
+    @apply bg-white border-b shadow-sm font-medium;
+  }
+  
+  /* Container da tabela com scroll */
   .table-container {
     @apply relative overflow-auto;
+    max-height: calc(100vh - 300px); /* Ajuste conforme necessário */
   }
 }
 

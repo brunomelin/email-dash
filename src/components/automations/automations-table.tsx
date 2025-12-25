@@ -62,9 +62,9 @@ export function AutomationsTable({ automations, hideEmailColumns = false }: Auto
       </div>
 
       {/* Tabela */}
-      <div className="rounded-md border table-container max-h-[calc(100vh-400px)]">
+      <div className="rounded-md border overflow-auto" style={{ maxHeight: 'calc(100vh - 300px)' }}>
         <Table>
-          <TableHeader className="table-sticky-header">
+          <TableHeader className="sticky top-0 z-10 bg-white shadow-sm">
             <TableRow>
               <TableHead>Automação</TableHead>
               <TableHead>Conta</TableHead>
