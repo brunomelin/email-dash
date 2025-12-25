@@ -418,16 +418,25 @@ export class AutomationMetricsService {
         const dateFrom = new Date(filters.dateFrom)
         dateFrom.setHours(0, 0, 0, 0)
         dateFilters.gte = dateFrom
+        console.log('🔍 [DEBUG] dateFrom:', {
+          original: filters.dateFrom,
+          ajustado: dateFrom.toISOString()
+        })
       }
       
       if (filters.dateTo) {
         const dateTo = new Date(filters.dateTo)
         dateTo.setHours(23, 59, 59, 999)
         dateFilters.lte = dateTo
+        console.log('🔍 [DEBUG] dateTo:', {
+          original: filters.dateTo,
+          ajustado: dateTo.toISOString()
+        })
       }
       
       // Substituir o sendDate com TODOS os filtros combinados
       campaignsWhere.sendDate = dateFilters
+      console.log('🔍 [DEBUG] Query final:', JSON.stringify(campaignsWhere, null, 2))
     }
     
     const campaignsInPeriod = await prisma.campaign.findMany({
@@ -442,8 +451,19 @@ export class AutomationMetricsService {
       },
     })
     
+    console.log(`🔍 [DEBUG] Campanhas encontradas: ${campaignsInPeriod.length}`)
+    if (campaignsInPeriod.length > 0) {
+      console.log('🔍 [DEBUG] Primeiras 3 campanhas:', campaignsInPeriod.slice(0, 3).map(c => ({
+        name: c.name,
+        sendDate: c.sendDate?.toISOString(),
+        sent: c.sent
+      })))
+    }
+    
     // 3. Agrupar campanhas por prefixo
     const campaignsByPrefix = this.groupCampaignsByPrefix(campaignsInPeriod as Campaign[])
+    console.log(`🔍 [DEBUG] Grupos de prefixos criados: ${campaignsByPrefix.size}`)
+    console.log('🔍 [DEBUG] Prefixos:', Array.from(campaignsByPrefix.keys()))
     
     // 4. Criar métricas para cada automação
     const withActivity: AutomationMetrics[] = []
