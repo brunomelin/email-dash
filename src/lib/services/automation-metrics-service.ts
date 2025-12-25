@@ -409,25 +409,25 @@ export class AutomationMetricsService {
       campaignsWhere.accountId = { in: filters.accountIds }
     }
     
-    // Aplicar filtro de data DIRETO no banco
+    // Aplicar filtro de data DIRETO no banco (PRESERVANDO o "not: null")
     if (filters.dateFrom || filters.dateTo) {
-      campaignsWhere.sendDate = {}
+      // IMPORTANTE: Manter o "not: null" e ADICIONAR os filtros de range
+      const dateFilters: any = { not: null }
       
       if (filters.dateFrom) {
         const dateFrom = new Date(filters.dateFrom)
         dateFrom.setHours(0, 0, 0, 0)
-        campaignsWhere.sendDate.gte = dateFrom
+        dateFilters.gte = dateFrom
       }
       
       if (filters.dateTo) {
         const dateTo = new Date(filters.dateTo)
         dateTo.setHours(23, 59, 59, 999)
-        if (campaignsWhere.sendDate.gte) {
-          campaignsWhere.sendDate.lte = dateTo
-        } else {
-          campaignsWhere.sendDate = { lte: dateTo }
-        }
+        dateFilters.lte = dateTo
       }
+      
+      // Substituir o sendDate com TODOS os filtros combinados
+      campaignsWhere.sendDate = dateFilters
     }
     
     const campaignsInPeriod = await prisma.campaign.findMany({
