@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/db'
 import { Automation, Campaign } from '@prisma/client'
+import { ActiveCampaignAPIv1 } from '@/lib/connectors/activecampaign/api-v1'
 
 export interface AutomationMetrics {
   id: string
@@ -367,13 +368,18 @@ export class AutomationMetricsService {
   }
 
   /**
-   * NOVA LÓGICA: Busca campanhas do período primeiro, depois agrupa por automação
-   * Retorna automações separadas em "com atividade" e "sem atividade"
+   * NOVA LÓGICA V2: Funciona igual à página principal
+   * - Busca TODAS as campanhas de automação (SEM filtro de sendDate no banco)
+   * - Se houver filtro de data, busca métricas da API v1
+   * - Agrupa por automação usando prefixo
+   * - Retorna automações separadas em "com atividade" e "sem atividade"
    */
   async getAutomationsWithMetricsV2(filters: AutomationFilters = {}): Promise<{
     withActivity: AutomationMetrics[]
     withoutActivity: AutomationMetrics[]
   }> {
+    console.log('🚀 [V2] Iniciando getAutomationsWithMetricsV2', filters)
+    
     // 1. Buscar TODAS as automações (para ter entered/exited)
     const whereAutomations: any = {}
     
@@ -391,6 +397,8 @@ export class AutomationMetricsService {
         account: {
           select: {
             name: true,
+            baseUrl: true,
+            apiKey: true,
           },
         },
       },
@@ -399,49 +407,21 @@ export class AutomationMetricsService {
       },
     })
     
-    // 2. Buscar campanhas DO PERÍODO (filtro no banco!)
+    console.log(`📊 [V2] Encontradas ${automations.length} automações`)
+    
+    // 2. Buscar TODAS as campanhas de automação (SEM filtro de sendDate!)
     const campaignsWhere: any = {
       isAutomation: true,
-      sendDate: { not: null }  // Só campanhas com data
     }
     
     if (filters.accountIds && filters.accountIds.length > 0) {
       campaignsWhere.accountId = { in: filters.accountIds }
     }
     
-    // Aplicar filtro de data DIRETO no banco (PRESERVANDO o "not: null")
-    if (filters.dateFrom || filters.dateTo) {
-      // IMPORTANTE: Manter o "not: null" e ADICIONAR os filtros de range
-      const dateFilters: any = { not: null }
-      
-      if (filters.dateFrom) {
-        const dateFrom = new Date(filters.dateFrom)
-        dateFrom.setHours(0, 0, 0, 0)
-        dateFilters.gte = dateFrom
-        console.log('🔍 [DEBUG] dateFrom:', {
-          original: filters.dateFrom,
-          ajustado: dateFrom.toISOString()
-        })
-      }
-      
-      if (filters.dateTo) {
-        const dateTo = new Date(filters.dateTo)
-        dateTo.setHours(23, 59, 59, 999)
-        dateFilters.lte = dateTo
-        console.log('🔍 [DEBUG] dateTo:', {
-          original: filters.dateTo,
-          ajustado: dateTo.toISOString()
-        })
-      }
-      
-      // Substituir o sendDate com TODOS os filtros combinados
-      campaignsWhere.sendDate = dateFilters
-      console.log('🔍 [DEBUG] Query final:', JSON.stringify(campaignsWhere, null, 2))
-    }
-    
-    const campaignsInPeriod = await prisma.campaign.findMany({
+    const allCampaigns = await prisma.campaign.findMany({
       where: campaignsWhere,
       select: {
+        id: true,
         accountId: true,
         name: true,
         sent: true,
@@ -451,21 +431,69 @@ export class AutomationMetricsService {
       },
     })
     
-    console.log(`🔍 [DEBUG] Campanhas encontradas: ${campaignsInPeriod.length}`)
-    if (campaignsInPeriod.length > 0) {
-      console.log('🔍 [DEBUG] Primeiras 3 campanhas:', campaignsInPeriod.slice(0, 3).map(c => ({
-        name: c.name,
-        sendDate: c.sendDate?.toISOString(),
-        sent: c.sent
-      })))
+    console.log(`📧 [V2] Encontradas ${allCampaigns.length} campanhas de automação`)
+    
+    // 3. Se houver filtro de data, buscar métricas da API v1
+    let campaignsWithMetrics = allCampaigns
+    
+    if (filters.dateFrom || filters.dateTo) {
+      console.log('📅 [V2] Filtro de data ativo, buscando métricas da API v1...')
+      
+      const sdate = filters.dateFrom?.toISOString().split('T')[0]
+      let ldate = filters.dateTo?.toISOString().split('T')[0]
+      
+      // FIX: A API v1 do ActiveCampaign retorna 0 quando sdate = ldate
+      // Solução: Adicionar +1 dia ao ldate quando forem iguais
+      if (sdate && ldate && sdate === ldate) {
+        const nextDay = new Date(filters.dateTo!)
+        nextDay.setDate(nextDay.getDate() + 1)
+        ldate = nextDay.toISOString().split('T')[0]
+        console.log(`⚠️  [V2] Ajustando ldate: ${sdate} → ${ldate} (API v1 requer intervalo)`)
+      }
+      
+      console.log(`📅 [V2] Período API v1: ${sdate} até ${ldate}`)
+      
+      // Buscar métricas em paralelo
+      campaignsWithMetrics = await Promise.all(
+        allCampaigns.map(async (campaign) => {
+          try {
+            // Encontrar a conta desta campanha
+            const automation = automations.find(a => a.accountId === campaign.accountId)
+            if (!automation) return campaign
+            
+            const apiv1 = new ActiveCampaignAPIv1({
+              baseUrl: automation.account.baseUrl,
+              apiKey: automation.account.apiKey,
+            })
+            
+            const metrics = await apiv1.getCampaignReportTotals(campaign.id, {
+              sdate,
+              ldate,
+            })
+            
+            // Retornar campanha com métricas atualizadas
+            return {
+              ...campaign,
+              sent: metrics.sent,
+              uniqueOpens: metrics.opens,
+              uniqueClicks: metrics.clicks,
+            }
+          } catch (error) {
+            console.error(`❌ [V2] Erro ao buscar métricas da campanha ${campaign.id}:`, error)
+            return campaign
+          }
+        })
+      )
+      
+      console.log(`✅ [V2] Métricas da API v1 obtidas`)
     }
     
-    // 3. Agrupar campanhas por prefixo
-    const campaignsByPrefix = this.groupCampaignsByPrefix(campaignsInPeriod as Campaign[])
-    console.log(`🔍 [DEBUG] Grupos de prefixos criados: ${campaignsByPrefix.size}`)
-    console.log('🔍 [DEBUG] Prefixos:', Array.from(campaignsByPrefix.keys()))
+    // 4. Agrupar campanhas por prefixo
+    const campaignsByPrefix = this.groupCampaignsByPrefix(campaignsWithMetrics as Campaign[])
+    console.log(`🏷️  [V2] Grupos de prefixos criados: ${campaignsByPrefix.size}`)
+    console.log(`🏷️  [V2] Prefixos:`, Array.from(campaignsByPrefix.keys()))
     
-    // 4. Criar métricas para cada automação
+    // 5. Criar métricas para cada automação
     const withActivity: AutomationMetrics[] = []
     const withoutActivity: AutomationMetrics[] = []
     
@@ -484,12 +512,19 @@ export class AutomationMetricsService {
       const metrics = this.calculateMetrics(automation, sameCampaigns)
       
       // Separar em "com atividade" vs "sem atividade"
-      if (sameCampaigns.length > 0) {
+      // Se houver filtro de data, considera "com atividade" apenas se tiver enviados > 0
+      const hasActivity = filters.dateFrom || filters.dateTo
+        ? metrics.totalSent > 0
+        : sameCampaigns.length > 0
+      
+      if (hasActivity) {
         withActivity.push(metrics)
       } else {
         withoutActivity.push(metrics)
       }
     }
+    
+    console.log(`✅ [V2] Com atividade: ${withActivity.length}, Sem atividade: ${withoutActivity.length}`)
     
     return {
       withActivity: withActivity.sort((a, b) => b.openRate - a.openRate),
