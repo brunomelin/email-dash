@@ -153,6 +153,7 @@ export async function updateAccountAction(
         baseUrl: validated.baseUrl,
         apiKey: validated.apiKey,
         isActive: validated.isActive,
+        contactLimit: validated.contactLimit,
       },
     })
 

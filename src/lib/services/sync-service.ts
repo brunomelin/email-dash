@@ -5,6 +5,7 @@ import {
   ListsAPI,
   AutomationsAPI,
   MessagesAPI,
+  ContactsAPI,
   normalizeCampaign,
   normalizeList,
   normalizeAutomation,
@@ -18,6 +19,7 @@ export interface SyncResult {
   listsSynced: number
   automationsSynced: number
   messagesSynced: number
+  contactCount?: number
   error?: string
 }
 
@@ -58,11 +60,13 @@ export class SyncService {
       const listsAPI = new ListsAPI(client)
       const automationsAPI = new AutomationsAPI(client)
       const messagesAPI = new MessagesAPI(client)
+      const contactsAPI = new ContactsAPI(client)
 
       let campaignsSynced = 0
       let listsSynced = 0
       let automationsSynced = 0
       let messagesSynced = 0
+      let contactCount = 0
 
       // 1. Sincronizar Listas
       console.log(`📋 Sincronizando listas da conta ${account.name}...`)
@@ -86,7 +90,33 @@ export class SyncService {
       }
       console.log(`✅ ${listsSynced} listas sincronizadas`)
 
-      // 2. Sincronizar Campanhas
+      // 2. Sincronizar Informações de Contatos (total + limite)
+      console.log(`👥 Sincronizando informações de contatos da conta ${account.name}...`)
+      try {
+        const accountInfo = await contactsAPI.getAccountInfo()
+        contactCount = accountInfo.contactCount
+        
+        // Atualizar conta com informações de contatos
+        await prisma.account.update({
+          where: { id: accountId },
+          data: {
+            contactCount: accountInfo.contactCount,
+            contactLimit: accountInfo.contactLimit > 0 ? accountInfo.contactLimit : undefined,
+            lastContactSync: new Date(),
+          },
+        })
+        
+        console.log(`✅ Contatos: ${accountInfo.contactCount.toLocaleString()}`)
+        if (accountInfo.contactLimit > 0) {
+          const percentage = ((accountInfo.contactCount / accountInfo.contactLimit) * 100).toFixed(1)
+          console.log(`✅ Limite: ${accountInfo.contactLimit.toLocaleString()} (${percentage}% usado)`)
+        }
+      } catch (error) {
+        console.warn(`⚠️  Não foi possível sincronizar informações de contatos:`, error)
+        // Não falhar o sync por causa disso
+      }
+
+      // 3. Sincronizar Campanhas
       console.log(`📧 Sincronizando campanhas da conta ${account.name}...`)
       for await (const campaignsBatch of campaignsAPI.listCampaigns()) {
         for (const acCampaign of campaignsBatch) {
@@ -144,7 +174,7 @@ export class SyncService {
       }
       console.log(`✅ ${campaignsSynced} campanhas sincronizadas`)
 
-      // 3. Sincronizar Automações
+      // 4. Sincronizar Automações
       console.log(`🤖 Sincronizando automações da conta ${account.name}...`)
       for await (const automationsBatch of automationsAPI.listAutomations()) {
         for (const acAutomation of automationsBatch) {
@@ -166,7 +196,7 @@ export class SyncService {
       }
       console.log(`✅ ${automationsSynced} automações sincronizadas`)
 
-      // 4. Sincronizar Messages (últimos 90 dias para não sobrecarregar)
+      // 5. Sincronizar Messages (últimos 90 dias para não sobrecarregar)
       console.log(`📬 Sincronizando mensagens dos últimos 90 dias da conta ${account.name}...`)
       
       // Buscar mensagens recentes (últimos 90 dias)
@@ -227,6 +257,7 @@ export class SyncService {
         listsSynced,
         automationsSynced,
         messagesSynced,
+        contactCount,
       }
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : String(error)

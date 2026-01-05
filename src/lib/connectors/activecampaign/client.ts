@@ -16,6 +16,15 @@ export class ActiveCampaignClient {
     this.apiKey = config.apiKey
   }
 
+  // Getters públicos para APIs que precisam acessar credenciais (ex: API v1)
+  getBaseUrl(): string {
+    return this.baseUrl
+  }
+
+  getApiKey(): string {
+    return this.apiKey
+  }
+
   private async request<T>(
     endpoint: string,
     options: RequestInit = {}

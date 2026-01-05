@@ -47,6 +47,7 @@ export function AccountFormDialog({ account, mode = 'create' }: AccountFormDialo
     baseUrl: account?.baseUrl || '',
     apiKey: account?.apiKey || '',
     isActive: account?.isActive ?? true,
+    contactLimit: (account as any)?.contactLimit || null,
   })
 
   const [errors, setErrors] = useState<Record<string, string>>({})
@@ -98,6 +99,7 @@ export function AccountFormDialog({ account, mode = 'create' }: AccountFormDialo
           baseUrl: '',
           apiKey: '',
           isActive: true,
+          contactLimit: null,
         })
         setTestResult(null)
       } else {
@@ -185,6 +187,25 @@ export function AccountFormDialog({ account, mode = 'create' }: AccountFormDialo
               {errors.apiKey && (
                 <p className="text-sm text-destructive">{errors.apiKey}</p>
               )}
+            </div>
+
+            {/* Limite de Contatos */}
+            <div className="grid gap-2">
+              <Label htmlFor="contactLimit">Limite de Contatos (opcional)</Label>
+              <Input
+                id="contactLimit"
+                type="number"
+                placeholder="ex: 2500"
+                value={formData.contactLimit || ''}
+                onChange={(e) => {
+                  const value = e.target.value === '' ? null : parseInt(e.target.value, 10)
+                  setFormData({ ...formData, contactLimit: value })
+                }}
+                min="1"
+              />
+              <p className="text-xs text-muted-foreground">
+                Defina o limite do plano para monitorar o uso de contatos
+              </p>
             </div>
 
             {/* Botão Testar Conexão */}

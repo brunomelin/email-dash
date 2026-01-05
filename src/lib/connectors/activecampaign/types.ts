@@ -55,6 +55,17 @@ export interface ACList {
   subscriber_count?: string
 }
 
+export interface ACContact {
+  id: string
+  email: string
+  firstName?: string
+  lastName?: string
+  phone?: string
+  cdate?: string // data de criação
+  udate?: string // data de atualização
+  // Outros campos podem existir, mas não são necessários para contar
+}
+
 export interface ACAutomation {
   id: string
   name: string

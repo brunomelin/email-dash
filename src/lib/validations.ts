@@ -14,6 +14,7 @@ export const accountSchema = z.object({
     ),
   apiKey: z.string().min(10, 'API Key inválida').max(200, 'API Key muito longa'),
   isActive: z.boolean().default(true),
+  contactLimit: z.number().int().positive().optional().nullable(),
 })
 
 export type AccountFormData = z.infer<typeof accountSchema>

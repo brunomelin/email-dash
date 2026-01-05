@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button'
 import { GlobalFilters } from '@/components/filters/global-filters'
 import { ActiveCampaignAPIv1 } from '@/lib/connectors/activecampaign/api-v1'
 import Link from 'next/link'
-import { Settings, List as ListIcon, Bot } from 'lucide-react'
+import { Settings, List as ListIcon, Bot, Users, AlertTriangle } from 'lucide-react'
 
 interface DashboardFilters {
   accountIds?: string[]
@@ -21,6 +21,17 @@ async function getDashboardData(filters: DashboardFilters = {}) {
   // Buscar todas as contas ativas
   const accountsRaw = await prisma.account.findMany({
     where: { isActive: true },
+    select: {
+      id: true,
+      name: true,
+      baseUrl: true,
+      isActive: true,
+      contactCount: true,
+      contactLimit: true,
+      lastContactSync: true,
+      createdAt: true,
+      updatedAt: true,
+    },
   })
   
   // Ordenação natural (case-insensitive + numeric)
@@ -405,15 +416,51 @@ export default async function DashboardPage({
                   </Link>
                 </div>
               ) : (
-                accounts.map((account: any) => (
-                  <div
-                    key={account.id}
-                    className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm"
-                  >
-                    <p className="font-medium">{account.name}</p>
-                    <p className="text-xs text-muted-foreground">{account.baseUrl}</p>
-                  </div>
-                ))
+                accounts.map((account: any) => {
+                  // Calcular percentual de uso e cor
+                  const hasContactData = account.contactCount !== null && account.contactCount !== undefined
+                  const hasLimit = account.contactLimit !== null && account.contactLimit !== undefined
+                  const percentage = hasLimit && hasContactData 
+                    ? (account.contactCount / account.contactLimit) * 100 
+                    : 0
+                  
+                  let contactColorClass = 'text-muted-foreground'
+                  if (hasLimit && hasContactData) {
+                    if (percentage >= 90) {
+                      contactColorClass = 'text-red-600 font-semibold'
+                    } else if (percentage >= 70) {
+                      contactColorClass = 'text-yellow-600 font-semibold'
+                    } else {
+                      contactColorClass = 'text-green-600 font-medium'
+                    }
+                  }
+
+                  return (
+                    <div
+                      key={account.id}
+                      className="rounded-lg border bg-card p-4 text-card-foreground shadow-sm min-w-[200px]"
+                    >
+                      <p className="font-medium">{account.name}</p>
+                      <p className="text-xs text-muted-foreground truncate">{account.baseUrl}</p>
+                      
+                      {/* Contador de contatos */}
+                      {hasContactData && (
+                        <div className="mt-2 flex items-center gap-2">
+                          <Users className="h-4 w-4 text-muted-foreground" />
+                          <span className={`text-sm ${contactColorClass}`}>
+                            {account.contactCount.toLocaleString('pt-BR')}
+                            {hasLimit && ` / ${account.contactLimit.toLocaleString('pt-BR')}`}
+                          </span>
+                          {percentage >= 90 && (
+                            <span title="Limite próximo!">
+                              <AlertTriangle className="h-4 w-4 text-red-500" />
+                            </span>
+                          )}
+                        </div>
+                      )}
+                    </div>
+                  )
+                })
               )}
             </div>
           </CardContent>

@@ -15,6 +15,12 @@ model Account {
   baseUrl   String   @map("base_url") // https://ACCOUNT.api-us1.com
   apiKey    String   @map("api_key")
   isActive  Boolean  @default(true) @map("is_active")
+  
+  // Contagem de contatos
+  contactCount    Int?      @default(0) @map("contact_count")
+  contactLimit    Int?      @map("contact_limit")
+  lastContactSync DateTime? @map("last_contact_sync")
+  
   createdAt DateTime @default(now()) @map("created_at")
   updatedAt DateTime @updatedAt @map("updated_at")
 
