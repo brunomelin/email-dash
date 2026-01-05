@@ -175,6 +175,7 @@ model SyncJob {
   finishedAt DateTime? @map("finished_at")
   status     String    // "running", "completed", "failed"
   error      String?   @db.Text
+  isAutomatic Boolean  @default(false) @map("is_automatic") // true = cron job, false = manual
 
   campaignsSynced   Int @default(0) @map("campaigns_synced")
   listsSynced       Int @default(0) @map("lists_synced")
@@ -184,6 +185,7 @@ model SyncJob {
   account Account @relation(fields: [accountId], references: [id], onDelete: Cascade)
 
   @@index([accountId, startedAt])
+  @@index([isAutomatic, finishedAt])
   @@map("sync_jobs")
 }
 

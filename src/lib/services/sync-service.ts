@@ -27,12 +27,13 @@ export class SyncService {
   /**
    * Sincroniza todos os dados de uma conta
    */
-  async syncAccount(accountId: string): Promise<SyncResult> {
+  async syncAccount(accountId: string, isAutomatic = false): Promise<SyncResult> {
     // Criar job de sync
     const syncJob = await prisma.syncJob.create({
       data: {
         accountId,
         status: 'running',
+        isAutomatic,
       },
     })
 
@@ -288,9 +289,9 @@ export class SyncService {
   /**
    * Sincroniza múltiplas contas em paralelo
    */
-  async syncMultipleAccounts(accountIds: string[]): Promise<SyncResult[]> {
+  async syncMultipleAccounts(accountIds: string[], isAutomatic = false): Promise<SyncResult[]> {
     const results = await Promise.allSettled(
-      accountIds.map(id => this.syncAccount(id))
+      accountIds.map(id => this.syncAccount(id, isAutomatic))
     )
 
     return results.map(result => {

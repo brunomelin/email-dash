@@ -2,6 +2,7 @@ import { prisma } from '@/lib/db'
 import { KPICards } from '@/components/dashboard/kpi-cards'
 import { CampaignsTable } from '@/components/dashboard/campaigns-table'
 import { SyncButton } from '@/components/dashboard/sync-button'
+import { LastAutoSync } from '@/components/dashboard/last-auto-sync'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { GlobalFilters } from '@/components/filters/global-filters'
@@ -331,7 +332,7 @@ export default async function DashboardPage({
     <div className="min-h-screen bg-slate-50">
       <header className="border-b bg-white">
         <div className="container mx-auto px-4 py-6">
-          <div className="flex items-center justify-between">
+          <div className="flex items-center justify-between mb-4">
             <div>
               <h1 className="text-3xl font-bold tracking-tight">Email Dashboard</h1>
               <p className="text-muted-foreground">
@@ -372,6 +373,9 @@ export default async function DashboardPage({
               )}
             </div>
           </div>
+          
+          {/* Status da sincronização automática */}
+          <LastAutoSync />
         </div>
       </header>
 
