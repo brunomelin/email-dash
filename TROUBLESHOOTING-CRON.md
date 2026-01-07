@@ -387,3 +387,4 @@ tail -50 ~/logs/auto-sync.log
 **Problema**: Cron job não está executando automaticamente  
 **Solução**: Verificar configuração, PATH e permissões
 
+

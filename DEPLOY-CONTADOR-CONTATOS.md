@@ -486,3 +486,4 @@ Se algo der errado:
 **Commit**: `dbd89ec`  
 **Feature**: Contador de contatos com limite automático
 
+

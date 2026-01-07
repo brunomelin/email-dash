@@ -435,3 +435,4 @@ Após alterar, salve e o cron pegará a mudança automaticamente.
 **Próxima execução**: A cada 2 horas (após configurar cron)  
 **Frequência**: Customizável via crontab
 
+

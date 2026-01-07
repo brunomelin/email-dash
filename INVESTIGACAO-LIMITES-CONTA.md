@@ -274,3 +274,4 @@ Problema: Dados imprecisos
 **Por:** Sistema de Análise Técnica  
 **Conclusão:** API não suporta busca de limites
 
+
