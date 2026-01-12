@@ -90,7 +90,22 @@ export class ActiveCampaignAPIv1 {
 
       // Verificar se a API retornou erro
       if (data.result_code !== 1) {
-        throw new Error(data.result_message || 'Erro desconhecido da API v1')
+        // Erro comum: "Failed: Nothing is returned" = campanha sem dados no período
+        // Em vez de lançar erro, retornamos métricas zeradas
+        console.warn(`⚠️  API v1 retornou erro para campanha ${campaignId}:`, data.result_message)
+        console.warn(`   Período: ${options?.sdate || 'N/A'} até ${options?.ldate || 'N/A'}`)
+        console.warn(`   Retornando métricas zeradas (campanha pode não ter dados neste período)`)
+        
+        return {
+          sent: 0,
+          opens: 0,
+          clicks: 0,
+          bounces: 0,
+          unsubscribes: 0,
+          forwards: 0,
+          openRate: 0,
+          clickRate: 0,
+        }
       }
 
       // Parse dos valores (API v1 retorna strings)
