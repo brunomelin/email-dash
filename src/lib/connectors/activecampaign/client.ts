@@ -164,8 +164,9 @@ export class ActiveCampaignClient {
    */
   async getAutomationCampaigns(automationId: string): Promise<any[]> {
     try {
-      const response = await this.get<any[]>(`/automations/${automationId}/campaigns`)
-      return response.campaigns || []
+      const response = await this.get<any>(`/automations/${automationId}/campaigns`)
+      // A resposta da API tem a estrutura: { campaigns: [...], meta: {...} }
+      return Array.isArray(response.campaigns) ? response.campaigns : []
     } catch (error: any) {
       // 404 significa que a automação não tem séries de emails
       if (error.message?.includes('404') || error.message?.includes('No Result found')) {

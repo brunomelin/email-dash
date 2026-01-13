@@ -1,0 +1,98 @@
+==============================================
+🚀 COMANDOS PARA DEPLOY NO SERVIDOR
+==============================================
+
+⚠️  IMPORTANTE: Execute esses comandos NO SERVIDOR (via SSH)
+
+==============================================
+📋 PARTE 1: PRIMEIRA VEZ (Setup Inicial)
+==============================================
+
+# 1. Criar diretório e clonar repositório
+mkdir -p ~/apps
+cd ~/apps
+git clone https://github.com/brunomelin/email-dash.git
+cd email-dash
+
+# 2. Criar arquivo .env
+nano .env
+
+# Cole isso no arquivo:
+DATABASE_URL="postgresql://user:password@localhost:5432/email_dash"
+NODE_ENV="production"
+PORT=3000
+
+# Salvar: Ctrl+X, depois Y, depois Enter
+
+# 3. Instalar PM2 (se não tiver)
+npm install -g pm2
+
+==============================================
+🔄 PARTE 2: DEPLOY/ATUALIZAÇÃO
+==============================================
+
+# Execute estes comandos em SEQUÊNCIA:
+
+cd ~/apps/email-dash
+
+pm2 stop email-dash || true
+
+git pull origin main
+
+npm ci
+
+npx prisma generate
+
+npx prisma db push --accept-data-loss
+
+npm run build
+
+pm2 restart email-dash || pm2 start npm --name "email-dash" -- start
+
+pm2 save
+
+pm2 logs email-dash --lines 20
+
+==============================================
+✅ VERIFICAR SE FUNCIONOU
+==============================================
+
+# Ver status
+pm2 status
+
+# Ver logs em tempo real
+pm2 logs email-dash
+
+# Testar se app está respondendo
+curl http://localhost:3000
+
+==============================================
+🆘 COMANDOS ÚTEIS
+==============================================
+
+# Ver logs
+pm2 logs email-dash
+
+# Reiniciar
+pm2 restart email-dash
+
+# Parar
+pm2 stop email-dash
+
+# Ver recursos (CPU/Memória)
+pm2 monit
+
+==============================================
+🎯 COMANDO ÚNICO (Deploy Completo)
+==============================================
+
+# Copie TUDO de uma vez:
+
+cd ~/apps/email-dash && pm2 stop email-dash && git pull origin main && npm ci && npx prisma generate && npx prisma db push --accept-data-loss && npm run build && pm2 restart email-dash && pm2 logs email-dash --lines 20
+
+==============================================
+
+💡 DICA: Salve este arquivo no servidor para referência futura!
+
+==============================================
+
