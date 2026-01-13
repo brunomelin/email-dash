@@ -340,19 +340,19 @@ export default async function DashboardPage({
               </p>
             </div>
             <div className="flex gap-2">
-              <Link href="/lists">
+              <Link href="/lists" prefetch={false}>
                 <Button variant="outline">
                   <ListIcon className="h-4 w-4 mr-2" />
                   Listas
                 </Button>
               </Link>
-              <Link href="/automations">
+              <Link href="/automations" prefetch={false}>
                 <Button variant="outline">
                   <Bot className="h-4 w-4 mr-2" />
                   Automações
                 </Button>
               </Link>
-              <Link href="/settings/accounts">
+              <Link href="/settings/accounts" prefetch={false}>
                 <Button variant="outline">
                   <Settings className="h-4 w-4 mr-2" />
                   Gerenciar Contas

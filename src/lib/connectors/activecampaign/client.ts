@@ -151,5 +151,29 @@ export class ActiveCampaignClient {
       offset += limit
     }
   }
+
+  /**
+   * Busca TODAS as campanhas (emails) de uma automação específica
+   * Usa o endpoint /automations/{id}/campaigns da API v3
+   * 
+   * IMPORTANTE: Só funciona para automações que têm séries de emails!
+   * Retorna 404 para automações sem séries (ex: só tags, webhooks, etc)
+   * 
+   * @param automationId - ID da automação
+   * @returns Array de campanhas da automação, ou array vazio se não tiver séries
+   */
+  async getAutomationCampaigns(automationId: string): Promise<any[]> {
+    try {
+      const response = await this.get<any[]>(`/automations/${automationId}/campaigns`)
+      return response.campaigns || []
+    } catch (error: any) {
+      // 404 significa que a automação não tem séries de emails
+      if (error.message?.includes('404') || error.message?.includes('No Result found')) {
+        return []
+      }
+      // Outros erros devem ser re-lançados
+      throw error
+    }
+  }
 }
 
