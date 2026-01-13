@@ -32,19 +32,41 @@ export function SyncButton({ accountId, accountName, variant = 'default' }: Sync
           alert(`❌ Erro na sincronização: ${result.error}`)
         }
       } else {
-        console.log('🔄 [SYNC] Sincronizando todas as contas...')
-        const result = await syncAllAccountsAction()
+        // Usar API Route para evitar timeout de Server Actions
+        // API Routes permitem timeouts mais longos (até 180s)
+        console.log('🔄 [SYNC] Sincronizando todas as contas via API...')
+        
+        const response = await fetch('/api/sync/all', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+        })
+
+        if (!response.ok) {
+          throw new Error(`HTTP ${response.status}: ${response.statusText}`)
+        }
+
+        const result = await response.json()
         console.log('📊 [SYNC] Resultado da sincronização de todas:', result)
         
-        if (result.success) {
-          const total = result.results.reduce((acc, r) => ({
-            campaigns: acc.campaigns + r.campaignsSynced,
-            lists: acc.lists + r.listsSynced,
-            automations: acc.automations + r.automationsSynced,
-            messages: acc.messages + r.messagesSynced,
-          }), { campaigns: 0, lists: 0, automations: 0, messages: 0 })
+        if (result.success || result.successCount > 0) {
+          const msg = result.errorCount > 0
+            ? `✅ Sincronização concluída com avisos!\n\n` +
+              `Sucesso: ${result.successCount}/${result.totalAccounts} contas\n\n` +
+              `Campanhas: ${result.totals.campaigns}\n` +
+              `Listas: ${result.totals.lists}\n` +
+              `Automações: ${result.totals.automations}\n` +
+              `Messages: ${result.totals.messages}\n\n` +
+              `⚠️ ${result.errorCount} conta(s) com erro`
+            : `✅ Sincronização de todas as contas concluída!\n\n` +
+              `${result.totalAccounts} contas sincronizadas\n\n` +
+              `Campanhas: ${result.totals.campaigns}\n` +
+              `Listas: ${result.totals.lists}\n` +
+              `Automações: ${result.totals.automations}\n` +
+              `Messages: ${result.totals.messages}`
           
-          alert(`✅ Sincronização de todas as contas concluída!\n\nCampanhas: ${total.campaigns}\nListas: ${total.lists}\nAutomações: ${total.automations}\nMessages: ${total.messages}`)
+          alert(msg)
           window.location.reload() // Recarregar para mostrar novos dados
         } else {
           console.error('❌ [SYNC] Erro na sincronização de todas:', result.error || 'Erro desconhecido')

@@ -2,6 +2,11 @@ import { prisma } from '@/lib/db'
 import { Automation, Campaign } from '@prisma/client'
 import { ActiveCampaignAPIv1 } from '@/lib/connectors/activecampaign/api-v1'
 import { ActiveCampaignClient } from '@/lib/connectors/activecampaign/client'
+import {
+  getCachedAutomationCampaigns,
+  getCachedCampaignMetrics,
+  getCachedCampaigns
+} from '@/lib/cache/server-cache'
 
 export interface AutomationMetrics {
   id: string
@@ -410,40 +415,28 @@ export class AutomationMetricsService {
     
     console.log(`📊 [V2] Encontradas ${automations.length} automações`)
     
-    // 2. HÍBRIDO: Tentar endpoint direto, se falhar usar heurística por prefixo
+    // 2. HÍBRIDO: Tentar endpoint direto (CACHADO), se falhar usar heurística por prefixo
     const automationsWithCampaigns = await Promise.all(
       automations.map(async (automation) => {
         try {
-          // Criar cliente da API para esta conta
-          const client = new ActiveCampaignClient({
-            baseUrl: automation.account.baseUrl,
-            apiKey: automation.account.apiKey,
-          })
-          
-          // Tentar buscar campanhas via endpoint direto
-          const apiCampaigns = await client.getAutomationCampaigns(automation.id)
+          // ✅ CACHE: Buscar campanhas via endpoint direto (cachado por 5 min)
+          const apiCampaigns = await getCachedAutomationCampaigns(
+            automation.id,
+            automation.account.baseUrl,
+            automation.account.apiKey
+          )
           
           if (apiCampaigns.length > 0) {
-            console.log(`📧 [V2] Automação "${automation.name}": ${apiCampaigns.length} campanhas via API direta`)
+            console.log(`📧 [V2] Automação "${automation.name}": ${apiCampaigns.length} campanhas via API direta (cachado)`)
             
-            // Converter IDs para buscar no banco
+            // Converter IDs para buscar no banco (CACHADO)
             const campaignIds = apiCampaigns.map((c: any) => c.id)
             
-            const campaigns = await prisma.campaign.findMany({
-              where: {
-                accountId: automation.accountId,
-                id: { in: campaignIds },
-              },
-              select: {
-                id: true,
-                accountId: true,
-                name: true,
-                sent: true,
-                uniqueOpens: true,
-                uniqueClicks: true,
-                sendDate: true,
-              },
-            })
+            // ✅ CACHE: Buscar campanhas do banco (cachado por 5 min)
+            const campaigns = await getCachedCampaigns(
+              automation.accountId,
+              campaignIds
+            )
             
             return { automation, campaigns }
           }
@@ -517,23 +510,22 @@ export class AutomationMetricsService {
       
       console.log(`📅 [V2] Período API v1: ${sdate} até ${ldate}`)
       
-      // Atualizar métricas de cada automação com dados da API v1
+      // Atualizar métricas de cada automação com dados da API v1 (CACHADO)
       for (const item of automationsWithCampaigns) {
         if (item.campaigns.length === 0) continue
         
-        const apiv1 = new ActiveCampaignAPIv1({
-          baseUrl: item.automation.account.baseUrl,
-          apiKey: item.automation.account.apiKey,
-        })
-        
-        // Buscar métricas para cada campanha
+        // Buscar métricas para cada campanha (CACHADO)
         item.campaigns = await Promise.all(
           item.campaigns.map(async (campaign) => {
             try {
-              const metrics = await apiv1.getCampaignReportTotals(campaign.id, {
-                sdate,
-                ldate,
-              })
+              // ✅ CACHE: Buscar métricas da API v1 (cachado por 5 min)
+              const metrics = await getCachedCampaignMetrics(
+                campaign.id,
+                sdate!,
+                ldate!,
+                item.automation.account.baseUrl,
+                item.automation.account.apiKey
+              )
               
               return {
                 ...campaign,

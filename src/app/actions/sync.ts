@@ -1,6 +1,6 @@
 'use server'
 
-import { revalidatePath } from 'next/cache'
+import { revalidatePath, revalidateTag } from 'next/cache'
 import { SyncService } from '@/lib/services/sync-service'
 
 export async function syncAccountAction(accountId: string) {
@@ -8,8 +8,34 @@ export async function syncAccountAction(accountId: string) {
     const syncService = new SyncService()
     const result = await syncService.syncAccount(accountId)
     
-    // Revalidar cache da página
+    // Invalidar caches
+    console.log('🔄 Invalidando caches após sync...')
     revalidatePath('/')
+    revalidateTag('automations')
+    revalidateTag('automation-campaigns')
+    revalidateTag('campaign-metrics')
+    revalidateTag('campaigns')
+    
+    // Warm cache em background (não aguardar)
+    if (typeof window === 'undefined') {
+      // Apenas no servidor
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+        const cronSecret = process.env.CRON_SECRET
+        
+        if (cronSecret) {
+          console.log('🔥 Iniciando warm cache em background...')
+          fetch(`${baseUrl}/api/cron/warm-cache`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${cronSecret}`
+            }
+          }).catch(err => console.error('Erro ao warm cache:', err))
+        }
+      } catch (err) {
+        console.error('Erro ao iniciar warm cache:', err)
+      }
+    }
     
     return result
   } catch (error) {
@@ -44,7 +70,33 @@ export async function syncAllAccountsAction() {
     )
     console.log('✅ [SERVER] Sync concluído:', results)
     
+    // Invalidar caches
+    console.log('🔄 Invalidando caches após sync de todas contas...')
     revalidatePath('/')
+    revalidateTag('automations')
+    revalidateTag('automation-campaigns')
+    revalidateTag('campaign-metrics')
+    revalidateTag('campaigns')
+    
+    // Warm cache em background
+    if (typeof window === 'undefined') {
+      try {
+        const baseUrl = process.env.NEXT_PUBLIC_URL || process.env.VERCEL_URL || 'http://localhost:3000'
+        const cronSecret = process.env.CRON_SECRET
+        
+        if (cronSecret) {
+          console.log('🔥 Iniciando warm cache em background...')
+          fetch(`${baseUrl}/api/cron/warm-cache`, {
+            method: 'GET',
+            headers: {
+              'Authorization': `Bearer ${cronSecret}`
+            }
+          }).catch(err => console.error('Erro ao warm cache:', err))
+        }
+      } catch (err) {
+        console.error('Erro ao iniciar warm cache:', err)
+      }
+    }
     
     return {
       success: results.every(r => r.success),
