@@ -23,7 +23,7 @@ export type AccountFormData = z.infer<typeof accountSchema>
  * Schema para atualização (campos opcionais)
  */
 export const accountUpdateSchema = accountSchema.partial().extend({
-  id: z.string().cuid(),
+  id: z.string().min(1, 'ID é obrigatório'),
 })
 
 export type AccountUpdateData = z.infer<typeof accountUpdateSchema>
