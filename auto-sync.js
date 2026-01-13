@@ -71,19 +71,15 @@ async function autoSync() {
 
     const syncService = new SyncService()
 
-    // 3. Sincronizar cada conta (sequencial para não sobrecarregar)
-    console.log('\n🔄 Iniciando sincronização (sequencial)...\n')
+    // 3. Sincronizar todas as contas em PARALELO (muito mais rápido!)
+    console.log('\n🔄 Iniciando sincronização em PARALELO de todas as contas...\n')
+    console.log('⚡ Isso vai ser MUITO mais rápido que antes!\n')
     
-    let successCount = 0
-    let errorCount = 0
-    const results = []
-
-    for (let i = 0; i < accounts.length; i++) {
-      const account = accounts[i]
+    // Executar todas em paralelo
+    const syncPromises = accounts.map(async (account, index) => {
       const accountStartTime = Date.now()
       
-      console.log(`\n[${ i + 1}/${accounts.length}] 📊 Sincronizando: ${account.name}`)
-      console.log(`    Base URL: ${account.baseUrl}`)
+      console.log(`[${index + 1}/${accounts.length}] 🚀 Iniciando: ${account.name}`)
       
       try {
         const result = await syncService.syncAccount(account.id, true) // isAutomatic = true
@@ -91,40 +87,52 @@ async function autoSync() {
         const duration = ((Date.now() - accountStartTime) / 1000).toFixed(1)
         
         if (result.success) {
-          console.log(`    ✅ Sucesso em ${duration}s`)
-          console.log(`       - Campanhas: ${result.campaignsSynced}`)
-          console.log(`       - Listas: ${result.listsSynced}`)
-          console.log(`       - Automações: ${result.automationsSynced}`)
-          console.log(`       - Mensagens: ${result.messagesSynced}`)
-          if (result.contactCount !== undefined) {
-            console.log(`       - Contatos: ${result.contactCount}`)
-          }
-          successCount++
+          console.log(`[${index + 1}/${accounts.length}] ✅ ${account.name} concluída em ${duration}s`)
         } else {
-          console.error(`    ❌ Erro em ${duration}s: ${result.error}`)
-          errorCount++
+          console.error(`[${index + 1}/${accounts.length}] ❌ ${account.name} falhou: ${result.error}`)
         }
         
-        results.push({
+        return {
           account: account.name,
           success: result.success,
           duration,
           ...result,
-        })
-        
+        }
       } catch (error) {
         const duration = ((Date.now() - accountStartTime) / 1000).toFixed(1)
-        console.error(`    ❌ Exceção em ${duration}s:`, error.message)
-        errorCount++
+        console.error(`[${index + 1}/${accounts.length}] ❌ ${account.name} exceção: ${error.message}`)
         
-        results.push({
+        return {
           account: account.name,
           success: false,
           duration,
           error: error.message,
-        })
+          campaignsSynced: 0,
+          listsSynced: 0,
+          automationsSynced: 0,
+          messagesSynced: 0,
+        }
       }
-    }
+    })
+    
+    // Aguardar todas terminarem
+    console.log('\n⏳ Aguardando todas as sincronizações terminarem...\n')
+    const results = await Promise.allSettled(syncPromises)
+    
+    // Processar resultados
+    const finalResults = results.map(r => r.status === 'fulfilled' ? r.value : {
+      account: 'Desconhecido',
+      success: false,
+      duration: '0',
+      error: r.reason?.message || 'Erro desconhecido',
+      campaignsSynced: 0,
+      listsSynced: 0,
+      automationsSynced: 0,
+      messagesSynced: 0,
+    })
+    
+    const successCount = finalResults.filter(r => r.success).length
+    const errorCount = finalResults.filter(r => !r.success).length
 
     // 4. Resumo final
     const totalDuration = ((Date.now() - startTime) / 1000).toFixed(1)
@@ -138,7 +146,7 @@ async function autoSync() {
     console.log(`🕐 Finalizado em: ${new Date().toISOString()}`)
     
     if (successCount > 0) {
-      const totals = results
+      const totals = finalResults
         .filter(r => r.success)
         .reduce((acc, r) => ({
           campaigns: acc.campaigns + (r.campaignsSynced || 0),
@@ -156,7 +164,7 @@ async function autoSync() {
     
     if (errorCount > 0) {
       console.log('\n⚠️  Contas com erro:')
-      results
+      finalResults
         .filter(r => !r.success)
         .forEach(r => {
           console.log(`   - ${r.account}: ${r.error || 'Erro desconhecido'}`)
