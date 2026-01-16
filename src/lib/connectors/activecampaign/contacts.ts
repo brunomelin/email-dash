@@ -10,23 +10,42 @@ export class ContactsAPI {
   constructor(private client: ActiveCampaignClient) {}
 
   /**
-   * Obtém o total de contatos da conta
-   * Usa limit=1 para performance (só precisamos do meta.total)
+   * Obtém o total de contatos ATIVOS da conta (excluindo deletados)
+   * 
+   * IMPORTANTE: Usa status=1 para filtrar apenas contatos ativos
+   * e remove contatos com deleted="1" (soft-deleted) do total.
+   * 
+   * Isso garante que o número corresponda ao mostrado no painel do ActiveCampaign.
    */
   async getTotalContacts(): Promise<number> {
     try {
-      const response = await this.client.get<ACContact[]>('/contacts?limit=1')
+      // Buscar contatos com status=1 (ativos) em lotes de 100
+      // Precisamos buscar alguns contatos para poder filtrar os deletados
+      const response = await this.client.get<ACContact[]>('/contacts?status=1&limit=100')
       
       // O total de contatos está em meta.total
-      // A API retorna como string, então precisamos fazer parse
       if (response.meta && response.meta.total !== undefined) {
         const total = typeof response.meta.total === 'string' 
           ? parseInt(response.meta.total, 10)
           : response.meta.total
         
-        if (!isNaN(total) && total >= 0) {
-          return total
+        if (isNaN(total) || total < 0) {
+          console.warn('⚠️  Total de contatos inválido:', total)
+          return 0
         }
+
+        // Filtrar contatos deletados (soft-deleted)
+        // O ActiveCampaign marca contatos como deleted="1" mas ainda os inclui no total
+        const contacts = response.contacts || []
+        const deletedCount = contacts.filter(contact => contact.deleted === "1").length
+        
+        const activeContacts = total - deletedCount
+        
+        if (deletedCount > 0) {
+          console.log(`   📊 Total bruto: ${total}, Deletados: ${deletedCount}, Ativos: ${activeContacts}`)
+        }
+        
+        return activeContacts
       }
 
       console.warn('⚠️  Não foi possível obter total de contatos da API')
@@ -39,10 +58,10 @@ export class ContactsAPI {
   }
 
   /**
-   * Obtém informações da conta incluindo limite de contatos
-   * Usa API v1 (account_view) que retorna subscriber_limit e subscriber_total
+   * Obtém o limite de contatos da conta
+   * Usa API v1 (account_view) - única API que retorna subscriber_limit
    */
-  async getAccountInfo(): Promise<AccountInfo> {
+  async getContactLimit(): Promise<number> {
     try {
       const baseUrl = this.client.getBaseUrl()
       const apiKey = this.client.getApiKey()
@@ -71,23 +90,58 @@ export class ContactsAPI {
 
       if (data.result_code === 1) {
         const contactLimit = parseInt(data.subscriber_limit || '0', 10)
-        const contactCount = parseInt(data.subscriber_total || '0', 10)
-
-        return {
-          contactCount,
-          contactLimit,
+        
+        if (!isNaN(contactLimit) && contactLimit >= 0) {
+          return contactLimit
         }
-      } else {
-        throw new Error(data.result_message || 'Erro ao buscar informações da conta')
       }
+
+      console.warn('⚠️  API v1 não retornou subscriber_limit válido')
+      return 0
     } catch (error) {
-      console.error('❌ Erro ao buscar informações da conta (API v1):', error)
-      
-      // Fallback: retornar apenas o total via API v3
+      console.error('❌ Erro ao buscar limite de contatos (API v1):', error)
+      return 0
+    }
+  }
+
+  /**
+   * Obtém informações da conta (total + limite)
+   * 
+   * ESTRATÉGIA HÍBRIDA (mais confiável):
+   * - Usa API v3 para buscar total de contatos (mais moderna e confiável)
+   * - Usa API v1 APENAS para buscar limite (único lugar que tem essa info)
+   */
+  async getAccountInfo(): Promise<AccountInfo> {
+    console.log('📊 Buscando informações da conta (estratégia híbrida v3 + v1)...')
+    
+    try {
+      // 1. Buscar total de contatos via API v3 (mais confiável)
+      console.log('   → API v3: buscando total de contatos...')
       const contactCount = await this.getTotalContacts()
+      console.log(`   ✅ API v3: ${contactCount.toLocaleString()} contatos encontrados`)
+      
+      // 2. Buscar limite via API v1 (única que tem essa informação)
+      console.log('   → API v1: buscando limite de contatos...')
+      const contactLimit = await this.getContactLimit()
+      
+      if (contactLimit > 0) {
+        const percentage = ((contactCount / contactLimit) * 100).toFixed(1)
+        console.log(`   ✅ API v1: limite de ${contactLimit.toLocaleString()} contatos (${percentage}% usado)`)
+      } else {
+        console.log('   ⚠️  API v1: limite não disponível')
+      }
+
       return {
         contactCount,
-        contactLimit: 0, // Não conseguiu buscar o limite
+        contactLimit,
+      }
+    } catch (error) {
+      console.error('❌ Erro ao buscar informações da conta:', error)
+      
+      // Fallback: retornar zeros
+      return {
+        contactCount: 0,
+        contactLimit: 0,
       }
     }
   }

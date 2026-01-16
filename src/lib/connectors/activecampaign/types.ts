@@ -63,6 +63,7 @@ export interface ACContact {
   phone?: string
   cdate?: string // data de criação
   udate?: string // data de atualização
+  deleted?: string // "0" = ativo, "1" = deletado (soft-delete)
   // Outros campos podem existir, mas não são necessários para contar
 }
 
