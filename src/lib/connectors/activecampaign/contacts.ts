@@ -36,7 +36,7 @@ export class ContactsAPI {
 
         // Filtrar contatos deletados (soft-deleted)
         // O ActiveCampaign marca contatos como deleted="1" mas ainda os inclui no total
-        const contacts = response.contacts || []
+        const contacts = (response.contacts as ACContact[] | undefined) || []
         const deletedCount = contacts.filter(contact => contact.deleted === "1").length
         
         const activeContacts = total - deletedCount
