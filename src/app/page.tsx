@@ -423,7 +423,7 @@ export default async function DashboardPage({
                 accounts.map((account: any) => {
                   // Calcular percentual de uso e cor
                   const hasContactData = account.contactCount !== null && account.contactCount !== undefined
-                  const hasLimit = account.contactLimit !== null && account.contactLimit !== undefined
+                  const hasLimit = account.contactLimit !== null && account.contactLimit !== undefined && account.contactLimit > 0
                   const percentage = hasLimit && hasContactData 
                     ? (account.contactCount / account.contactLimit) * 100 
                     : 0
@@ -453,7 +453,7 @@ export default async function DashboardPage({
                           <Users className="h-4 w-4 text-muted-foreground" />
                           <span className={`text-sm ${contactColorClass}`}>
                             {account.contactCount.toLocaleString('pt-BR')}
-                            {hasLimit && ` / ${account.contactLimit.toLocaleString('pt-BR')}`}
+                            {hasLimit ? ` / ${account.contactLimit.toLocaleString('pt-BR')}` : ' contatos'}
                           </span>
                           {percentage >= 90 && (
                             <span title="Limite próximo!">
